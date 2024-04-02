@@ -1,6 +1,7 @@
 #include <iostream>
 #include <string>
 #include "lox.h"
+#include "token.h"
 
 
 auto main(int argc, const char *argv[]) -> int {
