@@ -44,4 +44,8 @@ auto Lox::Report(int line, const std::string &where, const std::string &message)
   had_error_ = true;
 }
 
+auto Lox::Error(int line, const std::string &message) -> void {
+  Report(line, "const std::string &where", message);
+}
+
 }  // namespace cpplox
