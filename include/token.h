@@ -1,5 +1,6 @@
 #pragma once
 
+#include <map>
 #include <string>
 #include <utility>
 
@@ -37,6 +38,8 @@ private:
   TokenType token_type_;
   std::string lexeme_;
   int line_;
+public:
+  static std::map<std::string, TokenType> key_words;
 };
 
 }  // namespace cpplox
