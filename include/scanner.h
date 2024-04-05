@@ -2,6 +2,7 @@
 #include <string>
 #include <utility>
 #include <list>
+#include <vector>
 
 #include "token.h"
 
@@ -10,7 +11,7 @@ namespace cpplox {
 class Scanner {
 public:
   explicit Scanner(std::string source) : source_(std::move(source)) {}
-  auto ScanTokens() -> std::list<Token>;
+  auto ScanTokens() -> std::vector<Token>;
 
 private:
   auto IsAtEnd() -> bool;
@@ -28,7 +29,7 @@ private:
 
 private:
   std::string source_;
-  std::list<Token> tokens_;
+  std::vector<Token> tokens_;
   int start_{0};  // record begin pos
   int current_{0};  // record current pos
   int line_{1}; // record current source file line
