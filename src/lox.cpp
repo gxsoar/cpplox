@@ -1,4 +1,7 @@
 #include "lox.h"
+#include <error.h>
+#include <memory>
+#include "parser.h"
 
 namespace cpplox {
 
@@ -11,7 +14,7 @@ auto Lox::RunFile(const std::string &filePath) -> void {
   str << file.rdbuf();
   auto source_str = str.str();
   Run(source_str);
-  if (had_error_) {
+  if (had_error) {
     exit(-1);
   }
 }
@@ -34,18 +37,14 @@ auto Lox::Run(const std::string &source) -> void {
   auto scanner = std::make_unique<cpplox::Scanner>(source);
   auto tokens = scanner->ScanTokens();
 
+  auto parser{std::make_unique<Parser>(tokens)};
+  if (had_error) {
+    return;
+  }
   for (auto &token : tokens) {
     // Todo: output token
   }
 }
 
-auto Lox::Report(int line, const std::string &where, const std::string &message) -> void {
-  std::cerr << "[line " << line << "] Error " << where << " : " << message << "\n";
-  had_error_ = true;
-}
-
-auto Lox::Error(int line, const std::string &message) -> void {
-  Report(line, "const std::string &where", message);
-}
 
 }  // namespace cpplox
