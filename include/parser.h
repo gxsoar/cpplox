@@ -15,16 +15,16 @@ class Parser {
 public:
   explicit Parser(const std::vector<Token> &token) : tokens_(token){}
 
-  auto Parse() -> std::unique_ptr<ExprAST>;
+  auto Parse() -> std::shared_ptr<ExprAST>;
 
 private:
-  auto Expression() -> std::unique_ptr<ExprAST> { return Equality(); }
-  auto Equality() -> std::unique_ptr<ExprAST>;
-  auto Term() -> std::unique_ptr<ExprAST>;
-  auto Comparsion() -> std::unique_ptr<ExprAST>;
-  auto Factor() -> std::unique_ptr<ExprAST>;
-  auto Unary() -> std::unique_ptr<ExprAST>;
-  auto Primary() -> std::unique_ptr<ExprAST>;
+  auto Expression() -> std::shared_ptr<ExprAST> { return Equality(); }
+  auto Equality() -> std::shared_ptr<ExprAST>;
+  auto Term() -> std::shared_ptr<ExprAST>;
+  auto Comparsion() -> std::shared_ptr<ExprAST>;
+  auto Factor() -> std::shared_ptr<ExprAST>;
+  auto Unary() -> std::shared_ptr<ExprAST>;
+  auto Primary() -> std::shared_ptr<ExprAST>;
 
   auto Consume(const TokenType& type, const std::string &message) -> Token;
 
