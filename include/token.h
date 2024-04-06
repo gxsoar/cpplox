@@ -59,6 +59,11 @@ class Token {
  public:
   Token(TokenType token_type, std::string lexeme, int line)
       : token_type_(token_type), lexeme_(std::move(lexeme)), line_(line) {}
+  Token(const Token &other) {
+    this->token_type_ = other.token_type_;
+    this->lexeme_ = other.lexeme_;
+    this->line_ = other.line_;
+  }
   // TODO(gaoxiang):
   // auto ToString() -> std::string {
 
