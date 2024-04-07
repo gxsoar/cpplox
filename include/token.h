@@ -1,5 +1,6 @@
 #pragma once
 
+#include <any>
 #include <map>
 #include <string>
 #include <utility>
@@ -57,8 +58,8 @@ enum class TokenType {
 
 class Token {
  public:
-  Token(TokenType token_type, std::string lexeme, int line)
-      : token_type_(token_type), lexeme_(std::move(lexeme)), line_(line) {}
+  Token(TokenType token_type, std::string lexeme, std::any literal, int line)
+      : token_type_(token_type), lexeme_(std::move(lexeme)), literal_(std::move(literal)),line_(line) {}
   Token(const Token &other) {
     this->token_type_ = other.token_type_;
     this->lexeme_ = other.lexeme_;
@@ -75,6 +76,7 @@ class Token {
   TokenType token_type_;
   std::string lexeme_;
   int line_;
+  std::any literal_;
 
  public:
   inline static std::map<std::string, TokenType> key_words{
