@@ -1,5 +1,6 @@
 #include "lox.h"
 #include <error.h>
+#include <cstdlib>
 #include <memory>
 #include "parser.h"
 
@@ -16,6 +17,9 @@ auto Lox::RunFile(const std::string &filePath) -> void {
   Run(source_str);
   if (had_error) {
     exit(-1);
+  }
+  if (had_runtime_error) {
+    exit(70);
   }
 }
 
@@ -38,12 +42,11 @@ auto Lox::Run(const std::string &source) -> void {
   auto tokens = scanner->ScanTokens();
 
   auto parser{std::make_unique<Parser>(tokens)};
+  auto expression {parser->Parse()};
   if (had_error) {
     return;
   }
-  for (auto &token : tokens) {
-    // Todo: output token
-  }
+  interpreter->Interpret(expression);
 }
 
 
