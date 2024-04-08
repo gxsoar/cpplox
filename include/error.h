@@ -1,12 +1,15 @@
 #pragma once
 
 #include <token.h>
+#include <exception>
 #include <iostream>
 #include <string>
+#include "runtime_error.h"
 
 namespace cpplox {
 
 inline bool had_error {false};
+inline bool had_runtime_error{false};
 
 class Log {
  public:
@@ -20,7 +23,10 @@ class Log {
       Report(token.GetTokenLine(), " at " + token.GetTokenLexeme() + "`",message);
     }
   }
-
+  static void RuntimeError(const RuntimeError &error) {
+    std::cerr << error.what() << "\n[line " << error.GetToken().GetTokenLine() << "]\n";
+    had_error = true;
+  }
  private:
   static void Report(int line, const std::string &where, const std::string &message) {
     std::cerr << "[line " << line << "] Error " << where << " : " << message << "\n";
