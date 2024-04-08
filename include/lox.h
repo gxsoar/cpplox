@@ -7,6 +7,7 @@
 #include <string>
 
 #include "error.h"
+#include "interpreter.h"
 #include "scanner.h"
 #include "token.h"
 
@@ -18,7 +19,8 @@ public:
   auto RunPrompt() -> void; 
  
 private:
-  auto Run(const std::string& source) -> void; 
+  auto Run(const std::string& source) -> void;
+  inline static std::unique_ptr<Interpreter> interpreter{std::make_unique<Interpreter>()};
 };
 
 }  // namespace cpplox
