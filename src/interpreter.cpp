@@ -5,9 +5,11 @@
 #include <stdexcept>
 #include <string>
 #include <iostream>
+#include <vector>
 
 #include "ast.h"
 #include "runtime_error.h"
+#include "stmt.h"
 #include "token.h"
 #include "error.h"
 
@@ -117,6 +119,16 @@ void Interpreter::Interpret(const std::shared_ptr<ExprAST> &expression) {
   }
 }
 
+void Interpreter::Interpret(const std::vector<std::shared_ptr<Stmt>> &statements) {
+  try {
+  for (const auto& statement : statements) {
+    Execute(statement);
+  }
+  } catch (RuntimeError error) {
+    Log::RuntimeError(error);
+  }
+}
+
 auto Interpreter::StringIfy(const std::any &value) -> std::string {
   if (value.type() == typeid(nullptr)) {
     return "nil";
@@ -131,4 +143,74 @@ auto Interpreter::StringIfy(const std::any &value) -> std::string {
   return std::any_cast<std::string>(value);
 }
 
+void Interpreter::VisitIfStmt(std::shared_ptr<IfStmt> stmt) {
+  // 对表达式进行求值，如果为真执行then_branch否则执行else_branch
+  if (IsTruthy(Evaluate(stmt->GetConditionExpression()))) {
+    Execute(stmt->GetThenBranch());
+  } else if (stmt->GetElseBranch() != nullptr) {
+    Execute(stmt->GetElseBranch());
+  }
+}
+
+auto Interpreter::VisitLogicalExprAST(std::shared_ptr<LogicalExprAST> expr_ast) -> std::any {
+  auto left {Evaluate(expr_ast)};
+  if (expr_ast->GetToken().GetTokenType() == TokenType::OR) {
+    if (IsTruthy(left)) {
+      return left;
+    }
+  } else {
+    if (!IsTruthy(left)) {
+      return left;
+    }
+  }
+
+  return Evaluate(expr_ast->GetRightExpr());
+}
+
+void Interpreter::VisitWhileStmt(std::shared_ptr<WhileStmt> stmt) {
+  while(IsTruthy(stmt->GetConditionExpr())) {
+    Execute(stmt->GetWhileBody());
+  }
+}
+
+void Interpreter::VisitExpressionStmt(std::shared_ptr<ExpressionStmt> stmt) {
+  Evaluate(stmt->GetExpr());
+}
+
+void Interpreter::VisitPrintStmt(std::shared_ptr<PrintStmt> stmt) {
+  auto value {stmt->GetExpr()};
+  std::cout << StringIfy(value) << "\n";
+}
+
+void Interpreter::Execute(const std::shared_ptr<Stmt> &stmt) {
+  stmt->Accept(*this);
+}
+
+void Interpreter::VisitVarStmt(std::shared_ptr<VarStmt> stmt) {
+  std::any value;
+  if (stmt->GetExpr() != nullptr) {
+    value = Evaluate(stmt->GetExpr());
+  }
+  environment_.Define(stmt->GetName().GetTokenLexeme(), value);
+}
+
+auto Interpreter::VisitAssignmentExprAST(std::shared_ptr<AssignExprAST> expr_ast) -> std::any {
+  auto value {Evaluate(expr_ast->GetValue())};
+  environment_.Assign(expr_ast->GetName(), value);
+  return value;
+}
+
+void Interpreter::ExecuteBlock(const std::vector<std::shared_ptr<Stmt>> &statements, const Environment &env) {
+  auto previous = this->environment_;
+  try {
+    this->environment_ = env;
+    for (const auto &statement : statements) {
+      Execute(statement);
+    }
+  } catch(...) {
+    this->environment_ = previous;
+    throw;
+  }
+  this->environment_ = previous;
+}
 }  // namespace cpplox
