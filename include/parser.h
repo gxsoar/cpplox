@@ -7,6 +7,7 @@
 #include <stdexcept>
 #include <string>
 #include <vector>
+#include "stmt.h"
 #include "token.h"
 
 namespace cpplox {
@@ -15,16 +16,18 @@ class Parser {
 public:
   explicit Parser(const std::vector<Token> &token) : tokens_(token){}
 
-  auto Parse() -> std::shared_ptr<ExprAST>;
+  // auto Parse() -> std::shared_ptr<ExprAST>;
+  auto Parse() -> std::vector<std::shared_ptr<Stmt>>;
 
 private:
-  auto Expression() -> std::shared_ptr<ExprAST> { return Equality(); }
+  auto Expression() -> std::shared_ptr<ExprAST> { return Assignment(); }
   auto Equality() -> std::shared_ptr<ExprAST>;
   auto Term() -> std::shared_ptr<ExprAST>;
   auto Comparsion() -> std::shared_ptr<ExprAST>;
   auto Factor() -> std::shared_ptr<ExprAST>;
   auto Unary() -> std::shared_ptr<ExprAST>;
   auto Primary() -> std::shared_ptr<ExprAST>;
+  auto Assignment() -> std::shared_ptr<ExprAST>;
 
   auto Consume(const TokenType& type, const std::string &message) -> Token;
 
@@ -47,6 +50,17 @@ private:
     Log::Error(token, message);
     return ParseError{""};
   }
+  auto Statement() -> std::shared_ptr<Stmt>;
+  auto IfStatement() -> std::shared_ptr<Stmt>; // 处理if语句
+  auto PrintStatement() -> std::shared_ptr<Stmt>;
+  auto WhileStatement() -> std::shared_ptr<Stmt>;
+  auto And() -> std::shared_ptr<ExprAST>;
+  auto Or() -> std::shared_ptr<ExprAST>; 
+  auto ForStatement() -> std::shared_ptr<Stmt>;
+  auto VarDeclaration() -> std::shared_ptr<Stmt>;
+  auto ExpressionStatement() -> std::shared_ptr<Stmt>;
+  auto Declaration() -> std::shared_ptr<Stmt>;
+  auto Block() -> std::vector<std::shared_ptr<Stmt>>;
 private:
   std::vector<Token> tokens_;
   int current_{0};
