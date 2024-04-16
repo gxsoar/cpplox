@@ -1,10 +1,13 @@
 #include <algorithm>
 #include <initializer_list>
+#include <list>
 #include <memory>
 #include <string>
+#include <vector>
 
 #include "parser.h"
 #include "ast.h"
+#include "stmt.h"
 #include "token.h"
 #include "error.h"
 
@@ -17,12 +20,20 @@ namespace cpplox {
 // Factor / *
 // Unary ! -
 
-auto Parser::Parse() -> std::shared_ptr<ExprAST> {
-  try {
-    return Expression();
-  } catch (ParseError error) {
-    return nullptr;
+// auto Parser::Parse() -> std::shared_ptr<ExprAST> {
+//   try {
+//     return Expression();
+//   } catch (ParseError error) {
+//     return nullptr;
+//   }
+// }
+
+auto Parser::Parse() -> std::vector<std::shared_ptr<Stmt>> {
+  std::vector<std::shared_ptr<Stmt>> statements;
+  while(!IsAtEnd()) {
+    statements.push_back(Declaration());
   }
+  return statements;
 }
 
 auto Parser::Equality() -> std::shared_ptr<ExprAST> {
@@ -110,6 +121,9 @@ auto Parser::Primary() -> std::shared_ptr<ExprAST> {
     return std::make_shared<LiteralExprAST>();
   }
 
+  if (Match({TokenType::IDENTIFIER})) {
+    return std::make_shared<VarExprAST>(Previous());
+  }
   if (Match({TokenType::LEFT_PAREN})) {
     auto expr_ast {Expression()};
     Consume(TokenType::RIGHT_PAREN, "Expect ')' after expression");
@@ -174,6 +188,173 @@ void Parser::Synchronize() {
     }
     Advance();
   }
+}
+
+auto Parser::IfStatement() -> std::shared_ptr<Stmt> {
+  // deal with (
+  Consume(TokenType::LEFT_PAREN, "Expect '(' after 'if'.");
+  // if condition expression
+  auto condition {Expression()};
+  // deal with ')'
+  Consume(TokenType::RIGHT_PAREN, "Expect ')' after if condition");
+
+  auto then_branch {Statement()};
+  std::shared_ptr<Stmt> else_branch = nullptr;
+  if (Match({TokenType::ELSE})) {
+    else_branch = Statement();
+  }
+
+  return std::make_shared<IfStmt>(condition, then_branch, else_branch);
+}
+
+auto Parser::Statement() -> std::shared_ptr<Stmt> {
+  if (Match({TokenType::FOR})) {
+    return ForStatement();
+  }
+
+  if (Match({TokenType::IF})) {
+    return IfStatement();
+  }
+  if (Match({TokenType::PRINT})) {
+    return PrintStatement();
+  }
+  // Todo(gaoxiang)
+
+  if (Match({TokenType::LEFT_BRACE})) {
+    return std::make_shared<BlockStmt>(Block());
+  }
+  if (Match({TokenType::WHILE})) {
+    return WhileStatement();
+  }
+
+  return ExpressionStatement();
+}
+
+auto Parser::PrintStatement() -> std::shared_ptr<Stmt> {
+  auto value {Expression()};
+  Consume(TokenType::SEMICOLON, "Expect ';' after value");
+  return std::make_shared<Stmt>(value);
+}
+
+auto Parser::ExpressionStatement() -> std::shared_ptr<Stmt> {
+  auto expr {Expression()};
+  Consume(TokenType::SEMICOLON, "Expect ';' after expression");
+  return std::make_shared<Stmt>(expr);
+}
+
+auto Parser::Or() -> std::shared_ptr<ExprAST> {
+  auto expr {And()};
+  while(Match({TokenType::OR})) {
+    auto op {Previous()};
+    auto right {And()};
+    expr = std::make_shared<LogicalExprAST>(expr, op, right);
+  }
+  return expr;
+}
+
+auto Parser::And() -> std::shared_ptr<ExprAST> {
+  auto expr {Equality()};
+  while(Match({TokenType::AND})) {
+    auto op {Previous()};
+    auto right {Equality()};
+    expr = std::make_shared<LogicalExprAST>(expr, op, right);
+  }
+  return expr;
+}
+
+auto Parser::WhileStatement() -> std::shared_ptr<Stmt> {
+  Consume(TokenType::LEFT_PAREN, "Expect '(' after 'while'.");
+  auto condition {Expression()};
+  Consume(TokenType::RIGHT_PAREN, "Expect ')' after condition.");
+  auto body {Statement()};
+  return std::make_shared<WhileStmt>(condition, body);
+}
+
+auto Parser::ForStatement() -> std::shared_ptr<Stmt> {
+  Consume(TokenType::LEFT_PAREN, "Expect '(' after 'for' .");
+  std::shared_ptr<Stmt> initializer;
+  if (Match({TokenType::SEMICOLON})) {
+    initializer = nullptr;
+  } else if (Match({TokenType::VAR})) {
+    initializer = VarDeclaration();
+  } else {
+    initializer = ExpressionStatement();
+  }
+  std::shared_ptr<ExprAST> condition;
+  if (!Check(TokenType::SEMICOLON)) {
+    condition = Expression();
+  }
+  Consume(TokenType::SEMICOLON, "Expect ';' after loop condition.");
+  std::shared_ptr<ExprAST> increment;
+  if (!Check(TokenType::RIGHT_PAREN)) {
+    increment = Expression();
+  }
+  Consume(TokenType::RIGHT_PAREN, "Expect ')' after for clauses");
+  auto body {Statement()};
+
+  if (increment != nullptr) {
+    std::vector<std::shared_ptr<Stmt>> statements {std::make_shared<ExpressionStmt>(increment)};
+    body = std::make_shared<BlockStmt>(statements);
+  }
+
+  if (condition == nullptr) {
+    condition = std::make_shared<LiteralExprAST>(true);
+    body = std::make_shared<WhileStmt>(condition, body);
+  }
+
+  if (initializer != nullptr) {
+    std::vector<std::shared_ptr<Stmt>> statements {std::make_shared<ExpressionStmt>(initializer)};
+    body = std::make_shared<BlockStmt>(statements);
+  }
+  return body;
+}
+
+auto Parser::Declaration() -> std::shared_ptr<Stmt> {
+  try {
+  if (Match({TokenType::VAR})) {
+    return VarDeclaration();
+  }
+  } catch (ParseError error) {
+    Synchronize();
+    return nullptr;
+  }
+  return nullptr;
+}
+
+auto Parser::VarDeclaration() -> std::shared_ptr<Stmt> {
+  auto name {Consume(TokenType::IDENTIFIER, "Expect variable name.")};
+  std::shared_ptr<ExprAST> initializer;
+  if (Match({TokenType::EQUAL})) {
+    initializer = Expression();
+  }
+  Consume(TokenType::SEMICOLON, "Expect ';' after variable declaration");
+  return std::make_shared<VarStmt>(name, initializer);
+}
+
+auto Parser::Assignment() -> std::shared_ptr<ExprAST> {
+  auto expr {Equality()};
+
+  if (Match({TokenType::EQUAL})) {
+    auto equals {Previous()};
+    auto value {Assignment()};
+    if (auto *e = dynamic_cast<VarExprAST*>(value.get())) {
+      auto name {e->GetToken()};
+      return std::make_shared<AssignExprAST>(name, value);
+    }
+
+    Log::Error(equals, "Invalid assignment target.");
+  }
+
+  return expr;
+}
+
+auto Parser::Block() -> std::vector<std::shared_ptr<Stmt>> {
+  std::vector<std::shared_ptr<Stmt>> statements;
+  while(!Check({TokenType::RIGHT_BRACE}) && !IsAtEnd()) {
+    statements.push_back(Declaration());
+  }
+  Consume(TokenType::RIGHT_BRACE, "Expect '}' after block");
+  return statements;
 }
 
 } // namespace cpplox

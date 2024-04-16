@@ -42,11 +42,12 @@ auto Lox::Run(const std::string &source) -> void {
   auto tokens = scanner->ScanTokens();
 
   auto parser{std::make_unique<Parser>(tokens)};
-  auto expression {parser->Parse()};
+  // auto expression {parser->Parse()};
+  auto statements {parser->Parse()};
   if (had_error) {
     return;
   }
-  interpreter->Interpret(expression);
+  interpreter->Interpret(statements);
 }
 
 
