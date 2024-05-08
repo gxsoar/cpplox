@@ -8,6 +8,8 @@
 #include <vector>
 
 #include "ast.h"
+#include "lox_callable.h"
+#include "lox_function.h"
 #include "runtime_error.h"
 #include "stmt.h"
 #include "token.h"
@@ -191,16 +193,29 @@ void Interpreter::VisitVarStmt(std::shared_ptr<VarStmt> stmt) {
   if (stmt->GetExpr() != nullptr) {
     value = Evaluate(stmt->GetExpr());
   }
-  environment_.Define(stmt->GetName().GetTokenLexeme(), value);
+  environment_->Define(stmt->GetName().GetTokenLexeme(), value);
 }
 
 auto Interpreter::VisitAssignmentExprAST(std::shared_ptr<AssignExprAST> expr_ast) -> std::any {
   auto value {Evaluate(expr_ast->GetValue())};
-  environment_.Assign(expr_ast->GetName(), value);
+  environment_->Assign(expr_ast->GetName(), value);
   return value;
 }
 
-void Interpreter::ExecuteBlock(const std::vector<std::shared_ptr<Stmt>> &statements, const Environment &env) {
+void Interpreter::VisitFunctionStmt(std::shared_ptr<FunctionStmt> stmt) {
+  auto function {std::make_shared<FunctionStmt>(stmt, environment_)};
+  environment_->Define(stmt->GetFunctionName().GetTokenLexeme(), function);
+}
+
+void Interpreter::VisitReturnStmt(std::shared_ptr<ReturnStmt> stmt) {
+  std::any value;
+  if (stmt->GetReturnValue() != nullptr) {
+    value = Evaluate(stmt->GetReturnValue());
+  }
+  throw Return(value);
+}
+
+void Interpreter::ExecuteBlock(const std::vector<std::shared_ptr<Stmt>> &statements, const std::shared_ptr<Environment> &env) {
   auto previous = this->environment_;
   try {
     this->environment_ = env;
@@ -213,4 +228,23 @@ void Interpreter::ExecuteBlock(const std::vector<std::shared_ptr<Stmt>> &stateme
   }
   this->environment_ = previous;
 }
+
+auto Interpreter::VisitCallExprAST(std::shared_ptr<CallExprAST> expr_ast) -> std::any {
+  auto callee {Evaluate(expr_ast->GetCallee())};
+  std::vector<std::any> arguments;
+  for (const auto &argument : expr_ast->GetArguments()) {
+    arguments.emplace_back(Evaluate(argument));
+  }
+  if (callee.type() == typeid(LoxCallable)) {
+    throw RuntimeError{expr_ast->GetToken(), "Can only call functions and classes."};
+  }
+  auto function {std::any_cast<LoxFunction>(callee)};
+  if (arguments.size() != function.Arity()) {
+    std::string message = "Expected "; 
+    message += (std::to_string(function.Arity()) + " arguments but got " + std::to_string(arguments.size()) + ".");
+    throw RuntimeError{expr_ast->GetToken(), message};
+  }
+  return function.Call(*this, arguments);
+}
+
 }  // namespace cpplox

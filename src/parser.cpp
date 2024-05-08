@@ -101,7 +101,7 @@ auto Parser::Unary() -> std::shared_ptr<ExprAST> {
     auto right {Unary()};
     return std::make_shared<UnaryExprAST>(op, right);
   }
-  return Primary();
+  return Call();
 }
 
 // primary        → NUMBER | STRING | "true" | "false" | "nil" | "(" expression ")" ;
@@ -219,7 +219,9 @@ auto Parser::Statement() -> std::shared_ptr<Stmt> {
     return PrintStatement();
   }
   // Todo(gaoxiang)
-
+  if (Match({TokenType::RETURN})) {
+    return ReturnStatement();
+  }
   if (Match({TokenType::LEFT_BRACE})) {
     return std::make_shared<BlockStmt>(Block());
   }
@@ -311,6 +313,9 @@ auto Parser::ForStatement() -> std::shared_ptr<Stmt> {
 
 auto Parser::Declaration() -> std::shared_ptr<Stmt> {
   try {
+  if (Match({TokenType::FUN})) {
+    return Function("function");
+  }
   if (Match({TokenType::VAR})) {
     return VarDeclaration();
   }
@@ -355,6 +360,60 @@ auto Parser::Block() -> std::vector<std::shared_ptr<Stmt>> {
   }
   Consume(TokenType::RIGHT_BRACE, "Expect '}' after block");
   return statements;
+}
+
+auto Parser::Call() -> std::shared_ptr<ExprAST> {
+  auto expr = Primary();
+  while(true) {
+    if (Match({TokenType::LEFT_PAREN})) {
+      expr = FinishCall(expr);
+    } else {
+      break;
+    }
+  }
+  return expr;
+}
+
+auto Parser::FinishCall(const std::shared_ptr<ExprAST> &callee) -> std::shared_ptr<ExprAST> {
+  std::vector<std::shared_ptr<ExprAST>> arguments;
+  if (!Check({TokenType::RIGHT_PAREN})) {
+    do {
+      if (arguments.size() >= 255) {
+        Error(Peek(), "Can`t have more than 255 arguments");
+      }
+      arguments.emplace_back(Expression());
+    } while(Match({TokenType::COMMA}));
+  }
+  auto paren {Consume({TokenType::RIGHT_PAREN}, "Expect ')' after arguments.")};
+  return std::make_shared<CallExprAST>(callee, paren, arguments);
+}
+
+auto Parser::Function(const std::string &kind) -> std::shared_ptr<FunctionStmt> {
+  Token name{Consume(TokenType::IDENTIFIER, "Expect" + kind + " name.")};
+  Consume(TokenType::LEFT_PAREN, "Expect '(' after " + kind + " name.");
+  std::vector<Token> parameters;
+  if (!Check(TokenType::RIGHT_PAREN)) {
+    do {
+      if (parameters.size() >= 255) {
+        Log::Error(Peek(), "Can`t have more than 255 parameters");
+      }
+      parameters.emplace_back(Consume(TokenType::IDENTIFIER, "Expect parameter name."));
+    } while(Match({TokenType::COMMA}));
+  }
+  Consume(TokenType::RIGHT_PAREN, "Expect ')' after arguments.");
+  Consume(TokenType::LEFT_BRACE, "Expect '{' before " + kind + " body.");
+  auto body {Block()};
+  return std::make_shared<FunctionStmt>(name, parameters, body);
+}
+
+auto Parser::ReturnStatement() -> std::shared_ptr<Stmt> {
+  auto keyword {Previous()};
+  std::shared_ptr<ExprAST> value;
+  if (!Check({TokenType::SEMICOLON})) {
+    value = Expression();
+  }
+  Consume(TokenType::SEMICOLON, "Expect ';' after return value.");
+  return std::make_shared<ReturnStmt>(keyword, value);
 }
 
 } // namespace cpplox

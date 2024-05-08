@@ -13,6 +13,10 @@ namespace cpplox {
 class Environment : public std::enable_shared_from_this<Environment>{
 public:
   Environment() : enclosing_(nullptr) {}
+  Environment(const Environment &rhs)   : enable_shared_from_this(rhs) {
+    values_ = rhs.values_;
+    enclosing_ = rhs.enclosing_;
+  }
   explicit Environment(std::shared_ptr<Environment> enclosing) : enclosing_(std::move(enclosing)) {}
   void Define(const std::string &name, const std::any &value) { values_[name] = value; }
 

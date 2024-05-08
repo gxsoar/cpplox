@@ -14,6 +14,8 @@ class ExpressionStmt;
 class PrintStmt;
 class VarStmt;
 class BlockStmt;
+class FunctionStmt;
+class ReturnStmt;
 
 class StmtVisitor {
  public:
@@ -23,6 +25,8 @@ class StmtVisitor {
   virtual void VisitPrintStmt(std::shared_ptr<PrintStmt> stmt) = 0;
   virtual void VisitVarStmt(std::shared_ptr<VarStmt> stmt) = 0;
   virtual void VisitBlockStmt(std::shared_ptr<BlockStmt> stmt) = 0;
+  virtual void VisitFunctionStmt(std::shared_ptr<FunctionStmt> stmt) = 0;
+  virtual void VisitReturnStmt(std::shared_ptr<ReturnStmt> stmt) = 0;
 };
 
 class Stmt {
@@ -89,6 +93,28 @@ public:
 private:
   Token name_;
   std::shared_ptr<ExprAST> expr_;
+};
+
+class FunctionStmt : public Stmt, std::enable_shared_from_this<FunctionStmt> {
+public:
+  FunctionStmt(const Token &name, const std::vector<Token> &params, const std::vector<std::shared_ptr<Stmt>>& body) : 
+                name_(name), params_(params), body_(body) {}
+  auto GetFunctionParams() const -> std::vector<Token> { return params_; }
+  auto GetFunctionBody() const -> std::vector<std::shared_ptr<Stmt>> { return body_; }
+  auto GetFunctionName() const -> Token { return name_; }
+private:
+  Token name_;
+  std::vector<Token> params_;
+  std::vector<std::shared_ptr<Stmt>> body_;
+};
+
+class ReturnStmt : public Stmt {
+public:
+  ReturnStmt(const Token &keyword, std::shared_ptr<ExprAST> value) : keyword_(keyword), value_(std::move(value)){}
+  auto GetReturnValue() const -> std::shared_ptr<ExprAST> { return value_; }
+private:
+  Token keyword_;
+  std::shared_ptr<ExprAST> value_;
 };
 
 }  // namespace cpplox

@@ -28,6 +28,8 @@ private:
   auto Unary() -> std::shared_ptr<ExprAST>;
   auto Primary() -> std::shared_ptr<ExprAST>;
   auto Assignment() -> std::shared_ptr<ExprAST>;
+  auto Call() -> std::shared_ptr<ExprAST>;
+  auto FinishCall(const std::shared_ptr<ExprAST> &callee) -> std::shared_ptr<ExprAST>;
 
   auto Consume(const TokenType& type, const std::string &message) -> Token;
 
@@ -61,6 +63,8 @@ private:
   auto ExpressionStatement() -> std::shared_ptr<Stmt>;
   auto Declaration() -> std::shared_ptr<Stmt>;
   auto Block() -> std::vector<std::shared_ptr<Stmt>>;
+  auto Function(const std::string &kind) -> std::shared_ptr<FunctionStmt>;
+  auto ReturnStatement() -> std::shared_ptr<Stmt>;
 private:
   std::vector<Token> tokens_;
   int current_{0};

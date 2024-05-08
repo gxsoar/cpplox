@@ -4,6 +4,7 @@
 #include <any>
 #include <memory>
 #include <utility>
+#include <vector>
 
 #include "token.h"
 namespace cpplox {
@@ -15,6 +16,7 @@ class UnaryExprAST;
 class LogicalExprAST;
 class VarExprAST;
 class AssignExprAST;
+class CallExprAST;
 
 class ExprASTVisitor {
 public:
@@ -25,6 +27,7 @@ public:
   virtual auto VisitLogicalExprAST(std::shared_ptr<LogicalExprAST> expr_ast) -> std::any = 0;
   virtual auto VisitVariableExprAST(std::shared_ptr<VarExprAST> expr_ast) -> std::any = 0;
   virtual auto VisitAssignmentExprAST(std::shared_ptr<AssignExprAST> expr_ast) -> std::any = 0;
+  virtual auto VisitCallExprAST(std::shared_ptr<CallExprAST> expr_ast) -> std::any = 0;
   virtual ~ExprASTVisitor() = default;
 };
 
@@ -119,5 +122,19 @@ private:
   Token name_;
   std::shared_ptr<ExprAST> value_;
 };
+
+class CallExprAST : public ExprAST, std::enable_shared_from_this<CallExprAST> {
+public:
+  explicit CallExprAST(std::shared_ptr<ExprAST> callee, const Token &op, const std::vector<std::shared_ptr<ExprAST>>& arguments) : 
+                        callee_(std::move(callee)),op_(op), arguments_(arguments){}
+  auto GetCallee() const -> std::shared_ptr<ExprAST> { return callee_;}
+  auto GetArguments() const -> std::vector<std::shared_ptr<ExprAST>> { return arguments_; }
+  auto GetToken() const -> Token { return op_; }
+private:
+  std::shared_ptr<ExprAST> callee_;
+  Token op_;
+  std::vector<std::shared_ptr<ExprAST>> arguments_;
+};
+
 
 } // namespace cpplox
