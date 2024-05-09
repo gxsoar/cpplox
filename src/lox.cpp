@@ -2,7 +2,9 @@
 #include <error.h>
 #include <cstdlib>
 #include <memory>
+#include "interpreter.h"
 #include "parser.h"
+#include "resolver.h"
 
 namespace cpplox {
 
@@ -44,6 +46,11 @@ auto Lox::Run(const std::string &source) -> void {
   auto parser{std::make_unique<Parser>(tokens)};
   // auto expression {parser->Parse()};
   auto statements {parser->Parse()};
+  if (had_error) {
+    return;
+  }
+  auto resolver = std::make_unique<Resolver>(interpreter);
+  resolver->Resolve(statements);
   if (had_error) {
     return;
   }

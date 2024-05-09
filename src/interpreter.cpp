@@ -247,4 +247,15 @@ auto Interpreter::VisitCallExprAST(std::shared_ptr<CallExprAST> expr_ast) -> std
   return function.Call(*this, arguments);
 }
 
+void Interpreter::Resolve(const std::shared_ptr<ExprAST> &expr, int depth) {
+  locals_[expr] = depth;
+}
+
+auto Interpreter::LookUpVariable(const Token &name, const std::shared_ptr<ExprAST> &expr) -> std::any {
+  if (locals_.contains(expr)) {
+    return environment_->GetAt(locals_[expr], name.GetTokenLexeme());
+  }      
+  return globals_->Get(name);
+}
+
 }  // namespace cpplox

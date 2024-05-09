@@ -19,6 +19,7 @@ public:
   }
   explicit Environment(std::shared_ptr<Environment> enclosing) : enclosing_(std::move(enclosing)) {}
   void Define(const std::string &name, const std::any &value) { values_[name] = value; }
+  auto GetEnvironmentEnclosing() const -> std::shared_ptr<Environment> { return enclosing_; }
 
   auto Get(const Token &name) -> std::any {
     if (values_.contains(name.GetTokenLexeme())) {
@@ -28,6 +29,9 @@ public:
       return enclosing_->Get(name);
     }
     throw RuntimeError(name, "Undefined variable" + name.GetTokenLexeme() + ".");
+  }
+  auto GetAt(int distance, const std::string &name) -> std::any {
+    return Ancestor(distance)->values_[name];
   }
 
   void Assign(const Token &name, const std::any &value) {
@@ -42,6 +46,14 @@ public:
     throw RuntimeError(name, "Undefined variable " + name.GetTokenLexeme() + ".");
   }
 
+private:
+  auto Ancestor(int distance) -> std::shared_ptr<Environment> {
+    std::shared_ptr<Environment> environment {this};
+    for (int i = 0; i < distance; ++ i) {
+      environment = environment->GetEnvironmentEnclosing();
+    }
+    return environment;
+  }
 private:
   std::unordered_map<std::string, std::any> values_;
   std::shared_ptr<Environment> enclosing_;

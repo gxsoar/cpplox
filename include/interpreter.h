@@ -3,6 +3,7 @@
 #include <any>
 #include <memory>
 #include <string>
+#include <unordered_map>
 #include <vector>
 #include "ast.h"
 #include "environment.h"
@@ -22,7 +23,8 @@ public:
   auto VisitUnaryExprAST(std::shared_ptr<UnaryExprAST> expr_ast) -> std::any override;
   auto VisitBinaryExprAST(std::shared_ptr<BinaryExprAST> expr_ast) -> std::any override;
   auto VisitVariableExprAST(std::shared_ptr<VarExprAST> expr_ast) -> std::any override {
-    return environment_->Get(expr_ast->GetToken());
+    // return environment_->Get(expr_ast->GetToken());
+    return LookUpVariable(expr_ast->GetToken(),expr_ast);
   }
   auto VisitLogicalExprAST(std::shared_ptr<LogicalExprAST> expr_ast) -> std::any override;
   auto VisitAssignmentExprAST(std::shared_ptr<AssignExprAST> expr_ast) -> std::any override;
@@ -43,6 +45,8 @@ public:
   void VisitReturnStmt(std::shared_ptr<ReturnStmt> stmt) override;
   void ExecuteBlock(const std::vector<std::shared_ptr<Stmt>> &statements, const std::shared_ptr<Environment> &env);
   auto GetGlobalEnvironment() const -> std::shared_ptr<Environment> { return globals_; }
+  void Resolve(std::shared_ptr<ExprAST> expr, std::unordered_map<std::string, bool> &scope);
+  void Resolve(const std::shared_ptr<ExprAST> &expr, int depth);
 
 private:
   auto Evaluate(const std::shared_ptr<ExprAST>& expression) -> std::any {
@@ -53,10 +57,12 @@ private:
   void CheckNumberOperand(const Token &op, const std::any &left, const std::any &right);
   auto StringIfy(const std::any &value) -> std::string;
   void Execute(const std::shared_ptr<Stmt> &stmt);
+  auto LookUpVariable(const Token &name, const std::shared_ptr<ExprAST> &expr) -> std::any;
 
 private:
   std::shared_ptr<Environment> globals_{std::make_shared<Environment>()};
   std::shared_ptr<Environment> environment_{globals_};
+  std::unordered_map<std::shared_ptr<ExprAST>, int> locals_;
 };
 
 } // namespace cpplox

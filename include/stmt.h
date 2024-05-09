@@ -112,6 +112,7 @@ class ReturnStmt : public Stmt {
 public:
   ReturnStmt(const Token &keyword, std::shared_ptr<ExprAST> value) : keyword_(keyword), value_(std::move(value)){}
   auto GetReturnValue() const -> std::shared_ptr<ExprAST> { return value_; }
+  auto GetReturnKeyWord() const -> Token { return keyword_; }
 private:
   Token keyword_;
   std::shared_ptr<ExprAST> value_;

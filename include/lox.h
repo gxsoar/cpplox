@@ -20,7 +20,7 @@ public:
  
 private:
   auto Run(const std::string& source) -> void;
-  inline static std::unique_ptr<Interpreter> interpreter{std::make_unique<Interpreter>()};
+  inline static std::shared_ptr<Interpreter> interpreter{std::make_shared<Interpreter>()};
 };
 
 }  // namespace cpplox
