@@ -23,6 +23,7 @@ class CallExprAST;
 class GetExprAST;
 class SetExprAST;
 class ThisExprAST;
+class SuperExprAST;
 
 using ExprASTPtr = std::shared_ptr<ExprAST>;
 class ExprASTVisitor {
@@ -38,6 +39,7 @@ class ExprASTVisitor {
   virtual auto VisitGetExprAST(std::shared_ptr<GetExprAST> expr_ast) -> std::any = 0;
   virtual auto VisitSetExprAST(std::shared_ptr<SetExprAST> expr_ast) -> std::any = 0;
   virtual auto VisitThisExprAST(std::shared_ptr<ThisExprAST> expr_ast) -> std::any = 0;
+  virtual auto VisitSuperExprAST(std::shared_ptr<SuperExprAST> expr_ast) -> std::any = 0;
   virtual ~ExprASTVisitor() = default;
 };
 
@@ -181,6 +183,16 @@ public:
   auto Accept(ExprASTVisitor &visitor) -> std::any override { return visitor.VisitThisExprAST(shared_from_this()); }
 private:
   Token keyword_;
+};
+
+class SuperExprAST : public ExprAST, std::enable_shared_from_this<SetExprAST> {
+public:
+  explicit SuperExprAST(const Token &keyword, const Token &method) : keyword_(keyword), method_(method) {}
+  auto GetSuperkeyWord() const { return keyword_; }
+  auto GetSuperMethod() const { return method_; }
+private:
+  Token keyword_;
+  Token method_;
 };
 
 }  // namespace cpplox

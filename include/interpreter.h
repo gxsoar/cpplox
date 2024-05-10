@@ -32,6 +32,7 @@ public:
   auto VisitGetExprAST(std::shared_ptr<GetExprAST> expr_ast) -> std::any override;
   auto VisitSetExprAST(std::shared_ptr<SetExprAST> expr_ast) -> std::any override;
   auto VisitThisExprAST(std::shared_ptr<ThisExprAST> expr_ast) -> std::any override;
+  auto VisitSuperExprAST(std::shared_ptr<SuperExprAST> expr_ast) -> std::any override;
 
   void Interpret(const std::shared_ptr<ExprAST>& expression);
   void Interpret(const std::vector<std::shared_ptr<Stmt>> &statements);

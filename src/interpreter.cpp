@@ -9,6 +9,7 @@
 #include <vector>
 
 #include "ast.h"
+#include "environment.h"
 #include "lox_callable.h"
 #include "lox_class.h"
 #include "lox_function.h"
@@ -262,14 +263,29 @@ auto Interpreter::LookUpVariable(const Token &name, const std::shared_ptr<ExprAS
 }
 
 void Interpreter::VisitClassStmt(std::shared_ptr<ClassStmt> stmt) {
+  std::any supper_class;
+  if (stmt->GetSupperClass() != nullptr) {
+    supper_class = Evaluate(stmt->GetSupperClass());
+    if (supper_class.type() != typeid(LoxClass)) {
+      throw RuntimeError{stmt->GetSupperClass()->GetToken(), "Supper class must be a class"};
+    }
+  }
   environment_->Define(stmt->GetClassName().GetTokenLexeme(), {});
+  if (stmt->GetSupperClass() != nullptr) {
+    environment_ = std::make_shared<Environment>(environment_);
+    environment_->Defind("super", supper_class);
+  }
   std::unordered_map<std::string, std::shared_ptr<LoxFunction>> methods;
   for (const auto &method : stmt->GetClassMethods()) {
     bool is_init = (method->GetFunctionName().GetTokenLexeme() == "init");
     auto function {std::make_shared<LoxFunction>(method, environment_, is_init)};
     methods[method->GetFunctionName().GetTokenLexeme()] = function;
   }
-  std::shared_ptr<LoxClass> klass = std::make_shared<LoxClass>(stmt->GetClassName().GetTokenLexeme(), methods);
+  auto supper_class_ptr = std::any_cast<std::shared_ptr<VarExprAST>>(supper_class);
+  std::shared_ptr<LoxClass> klass = std::make_shared<LoxClass>(stmt->GetClassName().GetTokenLexeme(),supper_class_ptr, methods);
+  if (supper_class_ptr != nullptr) {
+    environment_ = environment_.enclosing_;
+  }
   environment_->Assign(stmt->GetClassName(), std::move(klass));
 }
 
@@ -293,6 +309,17 @@ auto Interpreter::VisitSetExprAST(std::shared_ptr<SetExprAST> expr_ast) -> std::
 
 auto Interpreter::VisitThisExprAST(std::shared_ptr<ThisExprAST> expr_ast) -> std::any {
   return LookUpVariable(expr_ast->GetThisKeyWord(), expr_ast);
+}
+
+auto Interpreter::VisitSuperExprAST(std::shared_ptr<SuperExprAST> expr_ast) -> std::any {
+  int distance = locals_.Get(expr_ast);
+  auto supper_class = std::any_cast<std::shared_ptr<LoxClass>>(environment_.GetAt(distance, "super"));
+  auto object = std::any_cast<std::shared_ptr<LoxInstance>>(environment_.GetAt(distance - 1, "this"));
+  auto method = supper_class.FindMethod(expr_ast->GetSuperMethod().GetTokenLexeme());
+  if (method == nullptr) {
+    throw RuntimeError{expr_ast->GetSuperMethod(), "Undefined property " + expr_ast->GetSuperMethod().GetTokenLexeme() + "."};
+  }
+  return method->Bind(object);
 }
 
 }  // namespace cpplox

@@ -4,6 +4,7 @@
 #include <memory>
 #include <vector>
 #include "ast.h"
+#include "lox_class.h"
 #include "resolver.h"
 #include "stmt.h"
 #include "token.h"
@@ -170,6 +171,18 @@ void Resolver::VisitClassStmt(std::shared_ptr<ClassStmt> stmt) {
   current_class_ = ClassType::CLASS;
   Declare(stmt->GetClassName());
   Define(stmt->GetClassName());
+  if (stmt->GetSupperClass() != nullptr && 
+      stmt->GetClassName().GetTokenLexeme() == stmt->GetSupperClass()->GetToken().GetTokenLexeme()) {
+    Log::Error(stmt->GetSupperClass()->GetToken(), "A class can`t inherit from itself.");
+  }
+  if (stmt->GetSupperClass() != nullptr) {
+    current_class_ = ClassType::SUBCLASS;
+    Resolve(stmt->GetSupperClass());
+  }
+  if (stmt->GetSupperClass() != nullptr) {
+    BeginScope();
+    scopes_.front().emplace("supper", true);
+  }
   BeginScope();
   scopes_.front().emplace("this", true);
   for (const auto &method : stmt->GetClassMethods()) {
@@ -180,6 +193,7 @@ void Resolver::VisitClassStmt(std::shared_ptr<ClassStmt> stmt) {
     ResolveFunction(method, declaration);
   }
   EndScope();
+  if (stmt->GetSupperClass() != nullptr) { EndScope(); }
   current_class_ = enclosing_class;
 }
 
@@ -200,6 +214,16 @@ auto Resolver::VisitThisExprAST(std::shared_ptr<ThisExprAST> expr_ast) -> std::a
     return {};
   }
   ResolveLocal(expr_ast, expr_ast->GetThisKeyWord());
+  return {};
+}
+
+auto Resolver::VisitSuperExprAST(std::shared_ptr<SuperExprAST> expr_ast) -> std::any {
+  if (current_class_ == ClassType::NONE) {
+    Log::Error(expr_ast->GetSuperkeyWord(), "Can`t use super outside of a class");
+  } else if (current_class_ != ClassType::SUBCLASS) {
+    Log::Error(expr_ast->GetSuperkeyWord(), "Can`t use 'super' in a class with no superclass");
+  }
+  ResolveLocal(expr_ast, expr_ast->GetSuperkeyWord());
   return {};
 }
 

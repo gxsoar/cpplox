@@ -108,17 +108,24 @@ auto Parser::Unary() -> std::shared_ptr<ExprAST> {
 // 处理最高优先级
 auto Parser::Primary() -> std::shared_ptr<ExprAST> {
   if (Match({TokenType::FALSE})) {
-    return std::make_shared<LiteralExprAST>();
+    return std::make_shared<LiteralExprAST>(false);
   }
   if (Match({TokenType::TRUE})) {
-    return std::make_shared<LiteralExprAST>();
+    return std::make_shared<LiteralExprAST>(true);
   }
   if (Match({TokenType::NIL})) {
-    return std::make_shared<LiteralExprAST>();
+    return std::make_shared<LiteralExprAST>(nullptr);
   }
 
   if (Match({TokenType::NUMBER, TokenType::STRING})) {
-    return std::make_shared<LiteralExprAST>();
+    return std::make_shared<LiteralExprAST>(Previous().GetLiteral());
+  }
+
+  if (Match({TokenType::SUPER})) {
+    auto keyword {Previous()};
+    Consume(TokenType::DOT, "Expect '.' after super .");
+    auto method {Consume(TokenType::IDENTIFIER, "Expect supper class method name")};
+    return std::make_shared<SuperExprAST>(keyword, method);
   }
 
   if (Match({TokenType::THIS})) {
@@ -329,14 +336,19 @@ auto Parser::Declaration() -> std::shared_ptr<Stmt> {
 
 auto Parser::ClassDeclaration() -> std::shared_ptr<Stmt> {
   auto name {Consume(TokenType::IDENTIFIER, "Expect class name.")};
+  std::shared_ptr<VarExprAST> supper_class;
+  if (Match({TokenType::LESS})) {
+    Consume(TokenType::IDENTIFIER, "Expect supper class name.");
+    supper_class = std::make_shared<VarExprAST>(Previous());
+  }
   Consume(TokenType::LEFT_BRACE, "Expect '{' before class body.");
   // use std::vector<std::shared_ptr<Stmt>> ? or FunctionStmt
   std::vector<std::shared_ptr<Stmt>> methods;
   while(!Check({TokenType::RIGHT_BRACE}) && !IsAtEnd()) {
     methods.push_back(Function("method"));
   }
-  Consume(TokenType::RIGHT_BRACE, "Expect '{' after class body.");
-  return std::make_shared<ClassStmt>(name, methods);
+  Consume(TokenType::RIGHT_BRACE, "Expect '}' after class body.");
+  return std::make_shared<ClassStmt>(name, supper_class, methods);
 }
 
 auto Parser::VarDeclaration() -> std::shared_ptr<Stmt> {

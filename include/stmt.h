@@ -138,13 +138,15 @@ class ReturnStmt : public Stmt, std::enable_shared_from_this<ReturnStmt> {
 
 class ClassStmt : public Stmt, std::enable_shared_from_this<ClassStmt> {
  public:
-  explicit ClassStmt(const Token &name, const std::vector<std::shared_ptr<FunctionStmt>> &methods)
-      : name_(name), methods_(methods) {}
+  explicit ClassStmt(const Token &name, std::shared_ptr<VarExprAST> supper_class, const std::vector<std::shared_ptr<FunctionStmt>> &methods)
+      : name_(name), supper_class_(std::move(supper_class)), methods_(methods) {}
   void Accept(StmtVisitor &visitor) override { visitor.VisitClassStmt(shared_from_this()); }
-  auto GetClassName() -> Token { return name_; }
-  auto GetClassMethods() -> std::vector<std::shared_ptr<FunctionStmt>> { return methods_; }
+  auto GetClassName() const -> Token { return name_; }
+  auto GetClassMethods() const -> std::vector<std::shared_ptr<FunctionStmt>> { return methods_; }
+  auto GetSupperClass() const -> std::shared_ptr<VarExprAST> { return supper_class_; }
  private:
   Token name_;
+  std::shared_ptr<VarExprAST> supper_class_;
   std::vector<std::shared_ptr<FunctionStmt>> methods_;
 };
 

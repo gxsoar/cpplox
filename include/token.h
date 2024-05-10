@@ -72,6 +72,7 @@ class Token {
   auto GetTokenType() const -> TokenType { return token_type_; }
   auto GetTokenLine() const -> int { return line_; }
   auto GetTokenLexeme() const -> std::string { return lexeme_; }
+  auto GetLiteral() const -> std::any { return literal_; }
  private:
   TokenType token_type_;
   std::string lexeme_;

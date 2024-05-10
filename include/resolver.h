@@ -22,7 +22,8 @@ enum class FunctionType {
 
 enum class ClassType {
   NONE,
-  CLASS
+  CLASS,
+  SUBCLASS
 };
 
 class Resolver : public ExprASTVisitor, StmtVisitor {
@@ -50,6 +51,7 @@ public:
   auto VisitGetExprAST(std::shared_ptr<GetExprAST> expr_ast) -> std::any override;
   auto VisitSetExprAST(std::shared_ptr<SetExprAST> expr_ast) -> std::any override;
   auto VisitThisExprAST(std::shared_ptr<ThisExprAST> expr_ast) -> std::any override;
+  auto VisitSuperExprAST(std::shared_ptr<SuperExprAST> expr_ast) -> std::any override;
 
   void Resolve(const std::vector<std::shared_ptr<Stmt>> &statements);
 private:
