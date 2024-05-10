@@ -121,6 +121,9 @@ void Resolver::VisitReturnStmt(std::shared_ptr<ReturnStmt> stmt) {
     Log::Error(stmt->GetReturnKeyWord(), "Can`t return from top-level code.");
   }
   if (stmt->GetReturnValue() != nullptr) {
+    if (current_function_ == FunctionType::INITIALIZER) {
+      Log::Error(stmt->GetReturnKeyWord(), "Can`t return a value from an initializer.");
+    }
     Resolve(stmt->GetReturnValue());
   }
 }
@@ -161,4 +164,43 @@ auto Resolver::VisitUnaryExprAST(std::shared_ptr<UnaryExprAST> expr_ast) -> std:
   Resolve(expr_ast->GetRightExpr());
   return {};
 }
+
+void Resolver::VisitClassStmt(std::shared_ptr<ClassStmt> stmt) {
+  auto enclosing_class {current_class_};
+  current_class_ = ClassType::CLASS;
+  Declare(stmt->GetClassName());
+  Define(stmt->GetClassName());
+  BeginScope();
+  scopes_.front().emplace("this", true);
+  for (const auto &method : stmt->GetClassMethods()) {
+    auto declaration {FunctionType::METHOD};
+    if (method->GetFunctionName().GetTokenLexeme() == "init") {
+      declaration = FunctionType::INITIALIZER;
+    }
+    ResolveFunction(method, declaration);
+  }
+  EndScope();
+  current_class_ = enclosing_class;
+}
+
+auto Resolver::VisitGetExprAST(std::shared_ptr<GetExprAST> expr_ast) -> std::any {
+  Resolve(expr_ast->GetObject());
+  return {};
+}
+
+auto Resolver::VisitSetExprAST(std::shared_ptr<SetExprAST> expr_ast) -> std::any {
+  Resolve(expr_ast->GetSetValue());
+  Resolve(expr_ast->GetSetObject());
+  return {};
+}
+
+auto Resolver::VisitThisExprAST(std::shared_ptr<ThisExprAST> expr_ast) -> std::any {
+  if (current_class_ == ClassType::NONE) {
+    Log::Error(expr_ast->GetThisKeyWord(), "Can`t use 'this' outside of a class");
+    return {};
+  }
+  ResolveLocal(expr_ast, expr_ast->GetThisKeyWord());
+  return {};
+}
+
 } // namespace cpplox

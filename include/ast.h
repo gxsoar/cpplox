@@ -2,13 +2,16 @@
 
 #include <algorithm>
 #include <any>
+#include <future>
 #include <memory>
 #include <utility>
 #include <vector>
 
+#include "stmt.h"
 #include "token.h"
 namespace cpplox {
 
+class ExprAST;
 class BinaryExprAST;
 class GroupingExprAST;
 class LiteralExprAST;
@@ -17,9 +20,13 @@ class LogicalExprAST;
 class VarExprAST;
 class AssignExprAST;
 class CallExprAST;
+class GetExprAST;
+class SetExprAST;
+class ThisExprAST;
 
+using ExprASTPtr = std::shared_ptr<ExprAST>;
 class ExprASTVisitor {
-public:
+ public:
   virtual auto VisitBinaryExprAST(std::shared_ptr<BinaryExprAST> expr_ast) -> std::any = 0;
   virtual auto VisitGroupingExprAST(std::shared_ptr<GroupingExprAST> expr_ast) -> std::any = 0;
   virtual auto VisitLiteralExprAST(std::shared_ptr<LiteralExprAST> expr_ast) -> std::any = 0;
@@ -28,113 +35,152 @@ public:
   virtual auto VisitVariableExprAST(std::shared_ptr<VarExprAST> expr_ast) -> std::any = 0;
   virtual auto VisitAssignmentExprAST(std::shared_ptr<AssignExprAST> expr_ast) -> std::any = 0;
   virtual auto VisitCallExprAST(std::shared_ptr<CallExprAST> expr_ast) -> std::any = 0;
+  virtual auto VisitGetExprAST(std::shared_ptr<GetExprAST> expr_ast) -> std::any = 0;
+  virtual auto VisitSetExprAST(std::shared_ptr<SetExprAST> expr_ast) -> std::any = 0;
+  virtual auto VisitThisExprAST(std::shared_ptr<ThisExprAST> expr_ast) -> std::any = 0;
   virtual ~ExprASTVisitor() = default;
 };
 
 class ExprAST {
-public:
-  virtual auto Accept(ExprASTVisitor& visitor) -> std::any = 0;
+ public:
+  virtual auto Accept(ExprASTVisitor &visitor) -> std::any = 0;
   virtual ~ExprAST() = default;
 };
 
-class BinaryExprAST : public ExprAST, std::enable_shared_from_this<BinaryExprAST>{
-public:
-  BinaryExprAST(std::shared_ptr<ExprAST> left, const Token &op, std::shared_ptr<ExprAST> right) : 
-    left_(std::move(left)), op_(op), right_(std::move(right)){}
+class BinaryExprAST : public ExprAST, std::enable_shared_from_this<BinaryExprAST> {
+ public:
+  BinaryExprAST(ExprASTPtr left, const Token &op, ExprASTPtr right)
+      : left_(std::move(left)), op_(op), right_(std::move(right)) {}
 
-  auto Accept(ExprASTVisitor &visitor) -> std::any override {
-    return visitor.VisitBinaryExprAST(shared_from_this());
-  }
-  auto GetLeftExpr() const -> std::shared_ptr<ExprAST> { return left_; }
-  auto GetRightExpr() const -> std::shared_ptr<ExprAST> { return right_; }
+  auto Accept(ExprASTVisitor &visitor) -> std::any override { return visitor.VisitBinaryExprAST(shared_from_this()); }
+  auto GetLeftExpr() const -> ExprASTPtr { return left_; }
+  auto GetRightExpr() const -> ExprASTPtr { return right_; }
   auto GetOperation() const -> Token { return op_; }
-private:
-  std::shared_ptr<ExprAST> left_;
-  std::shared_ptr<ExprAST> right_;
+
+ private:
+  ExprASTPtr left_;
+  ExprASTPtr right_;
   Token op_;
 };
 
 class UnaryExprAST : public ExprAST, std::enable_shared_from_this<UnaryExprAST> {
-public:
-  UnaryExprAST(std::shared_ptr<ExprAST> right, const Token &op) : right_(std::move(right)), op_(op){}
-  auto Accept(ExprASTVisitor &visitor) -> std::any override {
-    return visitor.VisitUnaryExprAST(shared_from_this());
-  }
+ public:
+  UnaryExprAST(ExprASTPtr right, const Token &op) : right_(std::move(right)), op_(op) {}
+  auto Accept(ExprASTVisitor &visitor) -> std::any override { return visitor.VisitUnaryExprAST(shared_from_this()); }
   auto GetOperation() const -> Token { return op_; }
-  auto GetRightExpr() const -> std::shared_ptr<ExprAST> { return right_; }
-private:
-  std::shared_ptr<ExprAST> right_;
+  auto GetRightExpr() const -> ExprASTPtr { return right_; }
+
+ private:
+  ExprASTPtr right_;
   Token op_;
 };
 
 class LiteralExprAST : public ExprAST, std::enable_shared_from_this<LiteralExprAST> {
-public:
+ public:
   explicit LiteralExprAST(std::any value) : value_(std::move(value)) {}
-  auto Accept(ExprASTVisitor &visitor) -> std::any override {
-    return visitor.VisitLiteralExprAST(shared_from_this());
-  }
+  auto Accept(ExprASTVisitor &visitor) -> std::any override { return visitor.VisitLiteralExprAST(shared_from_this()); }
   auto GetValue() const -> std::any { return value_; }
-private:
+
+ private:
   std::any value_;
 };
 
 class GroupingExprAST : public ExprAST, std::enable_shared_from_this<GroupingExprAST> {
-public:
-  explicit GroupingExprAST(std::shared_ptr<ExprAST> expression) : expression_(std::move(expression)) {}
-  auto Accept(ExprASTVisitor &visitor) -> std::any override {
-    return visitor.VisitGroupingExprAST(shared_from_this());
-  }
-  auto GetExpression() const -> std::shared_ptr<ExprAST> { return expression_; }
-private:
-  std::shared_ptr<ExprAST> expression_;
+ public:
+  explicit GroupingExprAST(ExprASTPtr expression) : expression_(std::move(expression)) {}
+  auto Accept(ExprASTVisitor &visitor) -> std::any override { return visitor.VisitGroupingExprAST(shared_from_this()); }
+  auto GetExpression() const -> ExprASTPtr { return expression_; }
+
+ private:
+  ExprASTPtr expression_;
 };
 
 class LogicalExprAST : public ExprAST, std::enable_shared_from_this<LogicalExprAST> {
-public:
-  explicit LogicalExprAST(std::shared_ptr<ExprAST> left, const Token& op, std::shared_ptr<ExprAST> right) :
-    left_(std::move(left)), op_(op), right_(std::move(right)) {}
-  auto GetLeftExpr() const -> std::shared_ptr<ExprAST> { return left_; }
-  auto GetRightExpr() const -> std::shared_ptr<ExprAST> { return  right_;}
-  auto GetToken() const -> Token { return op_;}
-private:
-  std::shared_ptr<ExprAST> left_;
+ public:
+  explicit LogicalExprAST(ExprASTPtr left, const Token &op, ExprASTPtr right)
+      : left_(std::move(left)), op_(op), right_(std::move(right)) {}
+  auto GetLeftExpr() const -> ExprASTPtr { return left_; }
+  auto GetRightExpr() const -> ExprASTPtr { return right_; }
+  auto GetToken() const -> Token { return op_; }
+  auto Accept(ExprASTVisitor &visitor) -> std::any override { return visitor.VisitLogicalExprAST(shared_from_this()); }
+
+ private:
+  ExprASTPtr left_;
   Token op_;
-  std::shared_ptr<ExprAST> right_;
+  ExprASTPtr right_;
 };
 
 class VarExprAST : public ExprAST, std::enable_shared_from_this<VarExprAST> {
-public:
+ public:
   explicit VarExprAST(const Token &op) : op_(op) {}
   auto GetToken() const -> Token { return op_; }
-private:
+  auto Accept(ExprASTVisitor &visitor) -> std::any override { return visitor.VisitVariableExprAST(shared_from_this()); }
+
+ private:
   Token op_;
 };
 
 class AssignExprAST : public ExprAST, std::enable_shared_from_this<AssignExprAST> {
-public:
-  explicit AssignExprAST(const Token &name, std::shared_ptr<ExprAST> value) : name_(name), value_(std::move(value)) {}
+ public:
+  explicit AssignExprAST(const Token &name, ExprASTPtr value) : name_(name), value_(std::move(value)) {}
   auto Accept(ExprASTVisitor &visitor) -> std::any override {
     return visitor.VisitAssignmentExprAST(shared_from_this());
   }
-  auto GetValue() const -> std::shared_ptr<ExprAST> { return value_; }
+  auto GetValue() const -> ExprASTPtr { return value_; }
   auto GetName() const -> Token { return name_; }
-private:
+
+ private:
   Token name_;
-  std::shared_ptr<ExprAST> value_;
+  ExprASTPtr value_;
 };
 
 class CallExprAST : public ExprAST, std::enable_shared_from_this<CallExprAST> {
-public:
-  explicit CallExprAST(std::shared_ptr<ExprAST> callee, const Token &op, const std::vector<std::shared_ptr<ExprAST>>& arguments) : 
-                        callee_(std::move(callee)),op_(op), arguments_(arguments){}
-  auto GetCallee() const -> std::shared_ptr<ExprAST> { return callee_;}
-  auto GetArguments() const -> std::vector<std::shared_ptr<ExprAST>> { return arguments_; }
+ public:
+  explicit CallExprAST(ExprASTPtr callee, const Token &op, const std::vector<ExprASTPtr> &arguments)
+      : callee_(std::move(callee)), op_(op), arguments_(arguments) {}
+  auto GetCallee() const -> ExprASTPtr { return callee_; }
+  auto GetArguments() const -> std::vector<ExprASTPtr> { return arguments_; }
   auto GetToken() const -> Token { return op_; }
-private:
-  std::shared_ptr<ExprAST> callee_;
+  auto Accept(ExprASTVisitor &visitor) -> std::any override { return visitor.VisitCallExprAST(shared_from_this()); }
+
+ private:
+  ExprASTPtr callee_;
   Token op_;
-  std::vector<std::shared_ptr<ExprAST>> arguments_;
+  std::vector<ExprASTPtr> arguments_;
 };
 
+class GetExprAST : public ExprAST, std::enable_shared_from_this<GetExprAST> {
+ public:
+  explicit GetExprAST(ExprASTPtr object, const Token &name) : object_(std::move(object)), name_(name) {}
+  auto GetObject() const -> ExprASTPtr { return object_; }
+  auto GetName() const -> Token { return name_; }
+  auto Accept(ExprASTVisitor &visitor) -> std::any override { return visitor.VisitGetExprAST(shared_from_this()); }
+ private:
+  ExprASTPtr object_;
+  Token name_;
+};
 
-} // namespace cpplox
+class SetExprAST : public ExprAST, std::enable_shared_from_this<SetExprAST> {
+ public:
+  explicit SetExprAST(ExprASTPtr object, const Token &name, ExprASTPtr value)
+      : object_(std::move(object)), name_(name), value_(std::move(value)) {}
+  auto GetSetObject() const -> ExprASTPtr { return object_; }
+  auto GetSetName() const -> Token { return name_; }
+  auto GetSetValue() const -> ExprASTPtr { return value_; }
+  auto Accept(ExprASTVisitor &visitor) -> std::any override { return visitor.VisitSetExprAST(shared_from_this()); }
+ private:
+  ExprASTPtr object_;
+  Token name_;
+  ExprASTPtr value_;
+};
+
+class ThisExprAST : public ExprAST, std::enable_shared_from_this<ThisExprAST> {
+public:
+  explicit ThisExprAST(const Token &keyword) : keyword_(keyword) {}
+  auto GetThisKeyWord() const -> Token { return keyword_; }
+  auto Accept(ExprASTVisitor &visitor) -> std::any override { return visitor.VisitThisExprAST(shared_from_this()); }
+private:
+  Token keyword_;
+};
+
+}  // namespace cpplox

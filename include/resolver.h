@@ -15,7 +15,14 @@ namespace cpplox {
 
 enum class FunctionType {
     NONE,
-    FUNCTION
+    FUNCTION,
+    INITIALIZER,
+    METHOD
+};
+
+enum class ClassType {
+  NONE,
+  CLASS
 };
 
 class Resolver : public ExprASTVisitor, StmtVisitor {
@@ -30,6 +37,7 @@ public:
   void VisitPrintStmt(std::shared_ptr<PrintStmt> stmt) override;
   void VisitReturnStmt(std::shared_ptr<ReturnStmt> stmt) override;
   void VisitWhileStmt(std::shared_ptr<WhileStmt> stmt) override;
+  void VisitClassStmt(std::shared_ptr<ClassStmt> stmt) override;
 
   auto VisitVariableExprAST(std::shared_ptr<VarExprAST> expr_ast) -> std::any override;
   auto VisitAssignmentExprAST(std::shared_ptr<AssignExprAST> expr_ast) -> std::any override;
@@ -39,6 +47,10 @@ public:
   auto VisitLiteralExprAST(std::shared_ptr<LiteralExprAST> expr) -> std::any override;
   auto VisitLogicalExprAST(std::shared_ptr<LogicalExprAST> expr_ast) -> std::any override;
   auto VisitUnaryExprAST(std::shared_ptr<UnaryExprAST> expr_ast) -> std::any override;
+  auto VisitGetExprAST(std::shared_ptr<GetExprAST> expr_ast) -> std::any override;
+  auto VisitSetExprAST(std::shared_ptr<SetExprAST> expr_ast) -> std::any override;
+  auto VisitThisExprAST(std::shared_ptr<ThisExprAST> expr_ast) -> std::any override;
+
   void Resolve(const std::vector<std::shared_ptr<Stmt>> &statements);
 private:
   void BeginScope();
@@ -54,6 +66,7 @@ private:
   std::shared_ptr<Interpreter> interpreter_;
   std::vector<std::unordered_map<std::string, bool>> scopes_;
   FunctionType current_function_ {FunctionType::NONE};
+  ClassType current_class_ {ClassType::NONE};
 };
 
 } // namespace cpplox

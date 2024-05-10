@@ -5,11 +5,11 @@
 #include <string>
 #include <vector>
 
-#include "parser.h"
 #include "ast.h"
+#include "error.h"
+#include "parser.h"
 #include "stmt.h"
 #include "token.h"
-#include "error.h"
 
 namespace cpplox {
 
@@ -30,7 +30,7 @@ namespace cpplox {
 
 auto Parser::Parse() -> std::vector<std::shared_ptr<Stmt>> {
   std::vector<std::shared_ptr<Stmt>> statements;
-  while(!IsAtEnd()) {
+  while (!IsAtEnd()) {
     statements.push_back(Declaration());
   }
   return statements;
@@ -38,7 +38,7 @@ auto Parser::Parse() -> std::vector<std::shared_ptr<Stmt>> {
 
 auto Parser::Equality() -> std::shared_ptr<ExprAST> {
   auto expr_ast{Comparsion()};
-  while(Match({TokenType::BANG_EQUAL, TokenType::EQUAL_EQUAL})) {
+  while (Match({TokenType::BANG_EQUAL, TokenType::EQUAL_EQUAL})) {
     Token op = Previous();
     auto right{Comparsion()};
     // Todo(gaoxiang): Add BinaryExprAST ctor parameter
@@ -50,9 +50,9 @@ auto Parser::Equality() -> std::shared_ptr<ExprAST> {
 // comparison     → term ( ( ">" | ">=" | "<" | "<=" ) term )* ;
 auto Parser::Comparsion() -> std::shared_ptr<ExprAST> {
   auto expr_ast{Term()};
-  while(Match({TokenType::GREATER, TokenType::GREATER_EQUAL, TokenType::LESS, TokenType::LESS_EQUAL})) {
+  while (Match({TokenType::GREATER, TokenType::GREATER_EQUAL, TokenType::LESS, TokenType::LESS_EQUAL})) {
     Token op = Previous();
-    auto right {Term()};
+    auto right{Term()};
     // Todo(gaoxiang): Add BinaryExprAST ctor parameter
     expr_ast = std::make_shared<BinaryExprAST>(expr_ast, op, right);
   }
@@ -60,11 +60,11 @@ auto Parser::Comparsion() -> std::shared_ptr<ExprAST> {
 }
 
 auto Parser::Term() -> std::shared_ptr<ExprAST> {
-  auto expr_ast {Factor()};
+  auto expr_ast{Factor()};
   // 先做加减法
-  while(Match({TokenType::MINUS, TokenType::PLUS})) {
+  while (Match({TokenType::MINUS, TokenType::PLUS})) {
     Token op = Previous();
-    auto right {Factor()};
+    auto right{Factor()};
     expr_ast = std::make_shared<BinaryExprAST>(expr_ast, op, right);
   }
   return expr_ast;
@@ -73,10 +73,10 @@ auto Parser::Term() -> std::shared_ptr<ExprAST> {
 // factor         → factor ( "/" | "*" ) unary | unary ;
 
 auto Parser::Factor() -> std::shared_ptr<ExprAST> {
-  auto expr_ast {Unary()};
-  while(Match({TokenType::SLASH, TokenType::STAR})) {
-    Token op {Previous()};
-    auto right {Unary()};
+  auto expr_ast{Unary()};
+  while (Match({TokenType::SLASH, TokenType::STAR})) {
+    Token op{Previous()};
+    auto right{Unary()};
     expr_ast = std::make_shared<BinaryExprAST>(expr_ast, op, right);
   }
   return expr_ast;
@@ -98,7 +98,7 @@ auto Parser::Unary() -> std::shared_ptr<ExprAST> {
   if (Match({TokenType::BANG, TokenType::MINUS})) {
     Token op{Previous()};
     // 采用递归的方式来解析操作数
-    auto right {Unary()};
+    auto right{Unary()};
     return std::make_shared<UnaryExprAST>(op, right);
   }
   return Call();
@@ -121,11 +121,15 @@ auto Parser::Primary() -> std::shared_ptr<ExprAST> {
     return std::make_shared<LiteralExprAST>();
   }
 
+  if (Match({TokenType::THIS})) {
+    return std::make_shared<ThisExprAST>(Previous());
+  }
+
   if (Match({TokenType::IDENTIFIER})) {
     return std::make_shared<VarExprAST>(Previous());
   }
   if (Match({TokenType::LEFT_PAREN})) {
-    auto expr_ast {Expression()};
+    auto expr_ast{Expression()};
     Consume(TokenType::RIGHT_PAREN, "Expect ')' after expression");
     return std::make_shared<GroupingExprAST>(expr_ast);
   }
@@ -148,17 +152,11 @@ auto Parser::Check(const TokenType &type) -> bool {
   return Peek().GetTokenType() == type;
 }
 
-auto Parser::IsAtEnd() -> bool {
-  return Peek().GetTokenType() == TokenType::TOKEN_EOF;
-}
+auto Parser::IsAtEnd() -> bool { return Peek().GetTokenType() == TokenType::TOKEN_EOF; }
 
-auto Parser::Peek() -> Token {
-  return tokens_[current_];
-}
+auto Parser::Peek() -> Token { return tokens_[current_]; }
 
-auto Parser::Previous() -> Token {
-  return tokens_[current_ - 1];
-}
+auto Parser::Previous() -> Token { return tokens_[current_ - 1]; }
 
 auto Parser::Advance() -> Token {
   if (!IsAtEnd()) {
@@ -169,7 +167,7 @@ auto Parser::Advance() -> Token {
 
 void Parser::Synchronize() {
   Advance();
-  while(!IsAtEnd()) {
+  while (!IsAtEnd()) {
     if (Previous().GetTokenType() == TokenType::SEMICOLON) {
       return;
     }
@@ -194,11 +192,11 @@ auto Parser::IfStatement() -> std::shared_ptr<Stmt> {
   // deal with (
   Consume(TokenType::LEFT_PAREN, "Expect '(' after 'if'.");
   // if condition expression
-  auto condition {Expression()};
+  auto condition{Expression()};
   // deal with ')'
   Consume(TokenType::RIGHT_PAREN, "Expect ')' after if condition");
 
-  auto then_branch {Statement()};
+  auto then_branch{Statement()};
   std::shared_ptr<Stmt> else_branch = nullptr;
   if (Match({TokenType::ELSE})) {
     else_branch = Statement();
@@ -233,32 +231,32 @@ auto Parser::Statement() -> std::shared_ptr<Stmt> {
 }
 
 auto Parser::PrintStatement() -> std::shared_ptr<Stmt> {
-  auto value {Expression()};
+  auto value{Expression()};
   Consume(TokenType::SEMICOLON, "Expect ';' after value");
   return std::make_shared<Stmt>(value);
 }
 
 auto Parser::ExpressionStatement() -> std::shared_ptr<Stmt> {
-  auto expr {Expression()};
+  auto expr{Expression()};
   Consume(TokenType::SEMICOLON, "Expect ';' after expression");
-  return std::make_shared<Stmt>(expr);
+  return std::make_shared<PrintStmt>(expr);
 }
 
 auto Parser::Or() -> std::shared_ptr<ExprAST> {
-  auto expr {And()};
-  while(Match({TokenType::OR})) {
-    auto op {Previous()};
-    auto right {And()};
+  auto expr{And()};
+  while (Match({TokenType::OR})) {
+    auto op{Previous()};
+    auto right{And()};
     expr = std::make_shared<LogicalExprAST>(expr, op, right);
   }
   return expr;
 }
 
 auto Parser::And() -> std::shared_ptr<ExprAST> {
-  auto expr {Equality()};
-  while(Match({TokenType::AND})) {
-    auto op {Previous()};
-    auto right {Equality()};
+  auto expr{Equality()};
+  while (Match({TokenType::AND})) {
+    auto op{Previous()};
+    auto right{Equality()};
     expr = std::make_shared<LogicalExprAST>(expr, op, right);
   }
   return expr;
@@ -266,9 +264,9 @@ auto Parser::And() -> std::shared_ptr<ExprAST> {
 
 auto Parser::WhileStatement() -> std::shared_ptr<Stmt> {
   Consume(TokenType::LEFT_PAREN, "Expect '(' after 'while'.");
-  auto condition {Expression()};
+  auto condition{Expression()};
   Consume(TokenType::RIGHT_PAREN, "Expect ')' after condition.");
-  auto body {Statement()};
+  auto body{Statement()};
   return std::make_shared<WhileStmt>(condition, body);
 }
 
@@ -292,10 +290,10 @@ auto Parser::ForStatement() -> std::shared_ptr<Stmt> {
     increment = Expression();
   }
   Consume(TokenType::RIGHT_PAREN, "Expect ')' after for clauses");
-  auto body {Statement()};
+  auto body{Statement()};
 
   if (increment != nullptr) {
-    std::vector<std::shared_ptr<Stmt>> statements {std::make_shared<ExpressionStmt>(increment)};
+    std::vector<std::shared_ptr<Stmt>> statements{std::make_shared<ExpressionStmt>(increment)};
     body = std::make_shared<BlockStmt>(statements);
   }
 
@@ -305,7 +303,7 @@ auto Parser::ForStatement() -> std::shared_ptr<Stmt> {
   }
 
   if (initializer != nullptr) {
-    std::vector<std::shared_ptr<Stmt>> statements {std::make_shared<ExpressionStmt>(initializer)};
+    std::vector<std::shared_ptr<Stmt>> statements{std::make_shared<ExpressionStmt>(initializer)};
     body = std::make_shared<BlockStmt>(statements);
   }
   return body;
@@ -313,12 +311,15 @@ auto Parser::ForStatement() -> std::shared_ptr<Stmt> {
 
 auto Parser::Declaration() -> std::shared_ptr<Stmt> {
   try {
-  if (Match({TokenType::FUN})) {
-    return Function("function");
-  }
-  if (Match({TokenType::VAR})) {
-    return VarDeclaration();
-  }
+    if (Match({TokenType::CLASS})) {
+      return ClassDeclaration();
+    }
+    if (Match({TokenType::FUN})) {
+      return Function("function");
+    }
+    if (Match({TokenType::VAR})) {
+      return VarDeclaration();
+    }
   } catch (ParseError error) {
     Synchronize();
     return nullptr;
@@ -326,8 +327,20 @@ auto Parser::Declaration() -> std::shared_ptr<Stmt> {
   return nullptr;
 }
 
+auto Parser::ClassDeclaration() -> std::shared_ptr<Stmt> {
+  auto name {Consume(TokenType::IDENTIFIER, "Expect class name.")};
+  Consume(TokenType::LEFT_BRACE, "Expect '{' before class body.");
+  // use std::vector<std::shared_ptr<Stmt>> ? or FunctionStmt
+  std::vector<std::shared_ptr<Stmt>> methods;
+  while(!Check({TokenType::RIGHT_BRACE}) && !IsAtEnd()) {
+    methods.push_back(Function("method"));
+  }
+  Consume(TokenType::RIGHT_BRACE, "Expect '{' after class body.");
+  return std::make_shared<ClassStmt>(name, methods);
+}
+
 auto Parser::VarDeclaration() -> std::shared_ptr<Stmt> {
-  auto name {Consume(TokenType::IDENTIFIER, "Expect variable name.")};
+  auto name{Consume(TokenType::IDENTIFIER, "Expect variable name.")};
   std::shared_ptr<ExprAST> initializer;
   if (Match({TokenType::EQUAL})) {
     initializer = Expression();
@@ -337,14 +350,17 @@ auto Parser::VarDeclaration() -> std::shared_ptr<Stmt> {
 }
 
 auto Parser::Assignment() -> std::shared_ptr<ExprAST> {
-  auto expr {Equality()};
+  auto expr{Equality()};
 
   if (Match({TokenType::EQUAL})) {
-    auto equals {Previous()};
-    auto value {Assignment()};
-    if (auto *e = dynamic_cast<VarExprAST*>(value.get())) {
-      auto name {e->GetToken()};
+    auto equals{Previous()};
+    auto value{Assignment()};
+    if (auto *e = dynamic_cast<VarExprAST *>(value.get())) {
+      auto name{e->GetToken()};
       return std::make_shared<AssignExprAST>(name, value);
+    } 
+    if (auto *e = dynamic_cast<GetExprAST*>(value.get())) {
+      return std::make_shared<SetExprAST>(e->GetObject(), e->GetName(), value);
     }
 
     Log::Error(equals, "Invalid assignment target.");
@@ -355,7 +371,7 @@ auto Parser::Assignment() -> std::shared_ptr<ExprAST> {
 
 auto Parser::Block() -> std::vector<std::shared_ptr<Stmt>> {
   std::vector<std::shared_ptr<Stmt>> statements;
-  while(!Check({TokenType::RIGHT_BRACE}) && !IsAtEnd()) {
+  while (!Check({TokenType::RIGHT_BRACE}) && !IsAtEnd()) {
     statements.push_back(Declaration());
   }
   Consume(TokenType::RIGHT_BRACE, "Expect '}' after block");
@@ -364,9 +380,12 @@ auto Parser::Block() -> std::vector<std::shared_ptr<Stmt>> {
 
 auto Parser::Call() -> std::shared_ptr<ExprAST> {
   auto expr = Primary();
-  while(true) {
+  while (true) {
     if (Match({TokenType::LEFT_PAREN})) {
       expr = FinishCall(expr);
+    } else if(Match({TokenType::DOT})){
+      auto name {Consume(TokenType::IDENTIFIER, "Expect property name after '.' .")};
+      expr = std::make_shared<GetExprAST>(expr, name);
     } else {
       break;
     }
@@ -382,13 +401,13 @@ auto Parser::FinishCall(const std::shared_ptr<ExprAST> &callee) -> std::shared_p
         Error(Peek(), "Can`t have more than 255 arguments");
       }
       arguments.emplace_back(Expression());
-    } while(Match({TokenType::COMMA}));
+    } while (Match({TokenType::COMMA}));
   }
-  auto paren {Consume({TokenType::RIGHT_PAREN}, "Expect ')' after arguments.")};
+  auto paren{Consume({TokenType::RIGHT_PAREN}, "Expect ')' after arguments.")};
   return std::make_shared<CallExprAST>(callee, paren, arguments);
 }
 
-auto Parser::Function(const std::string &kind) -> std::shared_ptr<FunctionStmt> {
+auto Parser::Function(const std::string &kind) -> std::shared_ptr<Stmt> {
   Token name{Consume(TokenType::IDENTIFIER, "Expect" + kind + " name.")};
   Consume(TokenType::LEFT_PAREN, "Expect '(' after " + kind + " name.");
   std::vector<Token> parameters;
@@ -398,16 +417,16 @@ auto Parser::Function(const std::string &kind) -> std::shared_ptr<FunctionStmt> 
         Log::Error(Peek(), "Can`t have more than 255 parameters");
       }
       parameters.emplace_back(Consume(TokenType::IDENTIFIER, "Expect parameter name."));
-    } while(Match({TokenType::COMMA}));
+    } while (Match({TokenType::COMMA}));
   }
   Consume(TokenType::RIGHT_PAREN, "Expect ')' after arguments.");
   Consume(TokenType::LEFT_BRACE, "Expect '{' before " + kind + " body.");
-  auto body {Block()};
+  auto body{Block()};
   return std::make_shared<FunctionStmt>(name, parameters, body);
 }
 
 auto Parser::ReturnStatement() -> std::shared_ptr<Stmt> {
-  auto keyword {Previous()};
+  auto keyword{Previous()};
   std::shared_ptr<ExprAST> value;
   if (!Check({TokenType::SEMICOLON})) {
     value = Expression();
@@ -416,4 +435,4 @@ auto Parser::ReturnStatement() -> std::shared_ptr<Stmt> {
   return std::make_shared<ReturnStmt>(keyword, value);
 }
 
-} // namespace cpplox
+}  // namespace cpplox

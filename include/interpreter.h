@@ -29,6 +29,9 @@ public:
   auto VisitLogicalExprAST(std::shared_ptr<LogicalExprAST> expr_ast) -> std::any override;
   auto VisitAssignmentExprAST(std::shared_ptr<AssignExprAST> expr_ast) -> std::any override;
   auto VisitCallExprAST(std::shared_ptr<CallExprAST> expr_ast) -> std::any override;
+  auto VisitGetExprAST(std::shared_ptr<GetExprAST> expr_ast) -> std::any override;
+  auto VisitSetExprAST(std::shared_ptr<SetExprAST> expr_ast) -> std::any override;
+  auto VisitThisExprAST(std::shared_ptr<ThisExprAST> expr_ast) -> std::any override;
 
   void Interpret(const std::shared_ptr<ExprAST>& expression);
   void Interpret(const std::vector<std::shared_ptr<Stmt>> &statements);
@@ -43,6 +46,8 @@ public:
   }
   void VisitFunctionStmt(std::shared_ptr<FunctionStmt> stmt) override;
   void VisitReturnStmt(std::shared_ptr<ReturnStmt> stmt) override;
+  void VisitClassStmt(std::shared_ptr<ClassStmt> stmt) override;
+
   void ExecuteBlock(const std::vector<std::shared_ptr<Stmt>> &statements, const std::shared_ptr<Environment> &env);
   auto GetGlobalEnvironment() const -> std::shared_ptr<Environment> { return globals_; }
   void Resolve(std::shared_ptr<ExprAST> expr, std::unordered_map<std::string, bool> &scope);

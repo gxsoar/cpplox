@@ -5,11 +5,14 @@
 #include <stdexcept>
 #include <string>
 #include <iostream>
+#include <unordered_map>
 #include <vector>
 
 #include "ast.h"
 #include "lox_callable.h"
+#include "lox_class.h"
 #include "lox_function.h"
+#include "lox_instance.h"
 #include "runtime_error.h"
 #include "stmt.h"
 #include "token.h"
@@ -203,7 +206,7 @@ auto Interpreter::VisitAssignmentExprAST(std::shared_ptr<AssignExprAST> expr_ast
 }
 
 void Interpreter::VisitFunctionStmt(std::shared_ptr<FunctionStmt> stmt) {
-  auto function {std::make_shared<FunctionStmt>(stmt, environment_)};
+  auto function {std::make_shared<FunctionStmt>(stmt, environment_, false)};
   environment_->Define(stmt->GetFunctionName().GetTokenLexeme(), function);
 }
 
@@ -256,6 +259,40 @@ auto Interpreter::LookUpVariable(const Token &name, const std::shared_ptr<ExprAS
     return environment_->GetAt(locals_[expr], name.GetTokenLexeme());
   }      
   return globals_->Get(name);
+}
+
+void Interpreter::VisitClassStmt(std::shared_ptr<ClassStmt> stmt) {
+  environment_->Define(stmt->GetClassName().GetTokenLexeme(), {});
+  std::unordered_map<std::string, std::shared_ptr<LoxFunction>> methods;
+  for (const auto &method : stmt->GetClassMethods()) {
+    bool is_init = (method->GetFunctionName().GetTokenLexeme() == "init");
+    auto function {std::make_shared<LoxFunction>(method, environment_, is_init)};
+    methods[method->GetFunctionName().GetTokenLexeme()] = function;
+  }
+  std::shared_ptr<LoxClass> klass = std::make_shared<LoxClass>(stmt->GetClassName().GetTokenLexeme(), methods);
+  environment_->Assign(stmt->GetClassName(), std::move(klass));
+}
+
+auto Interpreter::VisitGetExprAST(std::shared_ptr<GetExprAST> expr_ast) -> std::any {
+  auto object {Evaluate(expr_ast->GetObject())};
+  if (object.type() == typeid(LoxInstance)) {
+    return std::any_cast<LoxInstance>(object).Get(expr_ast->GetName());
+  }
+  throw RuntimeError(expr_ast->GetName(), "Only instances have properties.");
+}
+
+auto Interpreter::VisitSetExprAST(std::shared_ptr<SetExprAST> expr_ast) -> std::any {
+  auto object {Evaluate(expr_ast->GetSetObject())};
+  if (object.type() != typeid(LoxInstance)) {
+    throw RuntimeError{expr_ast->GetSetName(), "Only instances have fileds."};
+  }
+  auto value {Evaluate(expr_ast->GetSetValue())};
+  std::any_cast<LoxInstance>(object).Set(expr_ast->GetSetName(), value);
+  return value;
+}
+
+auto Interpreter::VisitThisExprAST(std::shared_ptr<ThisExprAST> expr_ast) -> std::any {
+  return LookUpVariable(expr_ast->GetThisKeyWord(), expr_ast);
 }
 
 }  // namespace cpplox
